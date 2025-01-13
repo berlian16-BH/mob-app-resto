@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:logger/logger.dart'; // Import the logger package
-import 'package:flutter/gestures.dart'; // For TapGestureRecognizer
-import 'register_screen.dart'; // Import RegisterScreen
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Authentication
+import 'package:logger/logger.dart'; // Logger
+import 'package:flutter/gestures.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -113,7 +113,7 @@ class LoginScreenState extends State<LoginScreen> {
             top: 500,
             child: RichText(
               text: TextSpan(
-                text: 'Already have an account? ',
+                text: 'Don’t have an account? ',
                 style: const TextStyle(fontSize: 14, color: Colors.black),
                 children: [
                   TextSpan(
@@ -125,12 +125,7 @@ class LoginScreenState extends State<LoginScreen> {
                     ),
                     recognizer: TapGestureRecognizer()
                       ..onTap = () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, '/register');
                       },
                   ),
                 ],
@@ -142,43 +137,50 @@ class LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Please enter both email and password.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      _logger.d('Login with Email: $email, Password: $password');
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Success'),
-          content: Text('Logged in with Email: $email'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      _showErrorDialog('Please enter both email and password.');
+      return;
     }
+
+    try {
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      _logger.i('Login successful: ${userCredential.user?.email}');
+
+      // Periksa apakah widget masih mounted sebelum menggunakan BuildContext
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home'); // Navigasi ke halaman utama
+      }
+    } catch (e) {
+      _logger.e('Login failed: $e');
+      if (mounted) {
+        _showErrorDialog('Login failed: ${e.toString()}');
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }
