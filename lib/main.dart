@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'screens/welcome_screen.dart'; // Import file tampilan
 import 'screens/login_screen.dart';   // Import LoginScreen
 import 'screens/register_screen.dart'; // Import RegisterScreen
+import 'package:firebase_core/firebase_core.dart'; // Tambahkan ini
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Tambahkan ini untuk memastikan Flutter sudah diinisialisasi
+  await Firebase.initializeApp(); // Inisialisasi Firebase
   runApp(const RestaurantApp());
 }
 

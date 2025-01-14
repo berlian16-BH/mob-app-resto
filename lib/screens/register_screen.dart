@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart'; // Import the logging package
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore
+import 'package:logging/logging.dart'; // Logger
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,19 +18,19 @@ class RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
 
   // Logger instance
-  final Logger _logger = Logger('RegisterScreen');
+  final Logger _logger = Logger('RegisterScreen'); // Diperbaiki
 
   // Visibility status for password fields
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
   // Method to handle registration logic
-  void _handleSignUp() {
+  Future<void> _handleSignUp() async {
     final firstName = _firstNameController.text.trim();
     final lastName = _lastNameController.text.trim();
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
 
     if (firstName.isEmpty ||
         lastName.isEmpty ||
@@ -52,12 +54,38 @@ class RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    _logger.info(
-      'User registered with First Name: $firstName, Last Name: $lastName, Email: $email',
-    );
+    try {
+      // Register user with Firebase Authentication
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    // Navigate to LoginScreen after successful registration
-    Navigator.pushReplacementNamed(context, '/login');
+      // Add user data to Firestore
+      final userId = userCredential.user?.uid;
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _logger.info(
+        'User registered successfully with Email: $email, First Name: $firstName, Last Name: $lastName',
+      );
+
+      // Navigate to LoginScreen after successful registration
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      _logger.warning('Registration failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: $e'),
+        ),
+      );
+    }
   }
 
   @override
@@ -78,7 +106,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Sign up for the Chunky app',
+                  'Sign up for the restaurant app',
                   style: TextStyle(fontSize: 18, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
